@@ -11,19 +11,23 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.GenericOptionsParser;
 
-public class RelativeFreq {
+public class RelativeFreq1 {
   public static class TokenizerMapper extends Mapper<Object, Text, WordPair, IntWritable> {
     private final static IntWritable one = new IntWritable(1);
 
     public void map(Object key, Text value, Context context) throws IOException, InterruptedException {
       StringTokenizer itr = new StringTokenizer(value.toString());
+      Text current = null;
       Text star = new Text("*");
-      Text current = new Text(itr.nextToken());
+      if(itr.hasMoreTokens()) {
+        current = new Text(itr.nextToken());
+      }
       while (itr.hasMoreTokens()) {
         context.write(new WordPair(current, star), one);
         Text next = new Text(itr.nextToken());
         context.write(new WordPair(current, next), one);
         context.write(new WordPair(next, current), one);
+        context.write(new WordPair(next, star), one);
         current = next;
       }
     }
@@ -31,23 +35,24 @@ public class RelativeFreq {
 
   public static class IntSumReducer extends Reducer<WordPair, IntWritable, WordPair, IntWritable> {
     private IntWritable result = new IntWritable();
-
-    public void reduce(WordPair key, Iterable<IntWritable> values, Context context)
-        throws IOException, InterruptedException {
-      int sum = 0;
-      IntWritable total = new IntWritable(0);
+    public void reduce(WordPair key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
+      int count = 1;
       Text start = new Text("*");
+      // System.out.println("the pair is \""+key.getWord() + "\" \"" + key.getNeighbor() + "\"");
+      if (key.getNeighbor().toString() == "*"){
+        count++;
+      }
       for (IntWritable val : values) {
-        if (key.getNeighbor() == start){
-          // set the current total to this value
-          System.out.println("the key is " + key.getWord() + "val" + key.getNeighbor());
-          total = val;
+        // System.out.println("the val is \"" + val.get() + "\"");
+        if (key.getNeighbor().toString() == "*"){
+          count++;
         } else {
-          context.write(key, new IntWritable(val.get()/total.get()));
+          context.write(key, new IntWritable(val.get()/count));
         }
       }
-      result.set(sum);
-      context.write(key, result);
+      if(key.getNeighbor().toString() == "*") {
+        System.out.println("The count is: " + count + "\n");
+      }
     }
   }
 
@@ -59,7 +64,7 @@ public class RelativeFreq {
       System.exit(2);
     }
     Job job = new Job(conf, "word count");
-    job.setJarByClass(RelativeFreq.class);
+    job.setJarByClass(RelativeFreq1.class);
     job.setMapperClass(TokenizerMapper.class);
     job.setCombinerClass(IntSumReducer.class);
     job.setReducerClass(IntSumReducer.class);
