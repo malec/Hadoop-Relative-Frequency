@@ -12,7 +12,7 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.GenericOptionsParser;
 
 public class RelativeFreq1 {
-  public static class TokenizerMapper extends Mapper<Object, Text, WordPair, IntWritable> {
+  public static class RF1Mapper extends Mapper<Object, Text, WordPair, IntWritable> {
     private final static IntWritable one = new IntWritable(1);
 
     public void map(Object key, Text value, Context context) throws IOException, InterruptedException {
@@ -33,28 +33,24 @@ public class RelativeFreq1 {
     }
   }
 
-  public static class IntSumReducer extends Reducer<WordPair, IntWritable, WordPair, IntWritable> {
-    private IntWritable result = new IntWritable();
+  public static class RF1Reducer extends Reducer<WordPair, IntWritable, WordPair, IntWritable> {
     public void reduce(WordPair key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
-      int count = 1;
-      Text start = new Text("*");
-      // System.out.println("the pair is \""+key.getWord() + "\" \"" + key.getNeighbor() + "\"");
-      if (key.getNeighbor().toString() == "*"){
-        count++;
-      }
-      for (IntWritable val : values) {
-        // System.out.println("the val is \"" + val.get() + "\"");
-        if (key.getNeighbor().toString() == "*"){
-          count++;
-        } else {
-          context.write(key, new IntWritable(val.get()/count));
-        }
-      }
-      if(key.getNeighbor().toString() == "*") {
-        System.out.println("The count is: " + count + "\n");
-      }
+			int sum = 0;
+			for(IntWritable value : values) {
+				sum = sum + value.get();
+			}
+			context.write(key, new IntWritable(sum));
     }
-  }
+	}
+	
+	public static class RF1Partitioner extends Partitioner<WordPair, IntWritable> {
+		@Override
+		public int getPartition(WordPair key, IntWritable value, int numReduceTasks) {
+			// System.out.println("key: " + key.getKey() + ", " + key.getValue() + " val:" +
+			// value);
+			return 
+		}
+	}
 
   public static void main(String[] args) throws Exception {
     Configuration conf = new Configuration();
@@ -65,9 +61,10 @@ public class RelativeFreq1 {
     }
     Job job = new Job(conf, "word count");
     job.setJarByClass(RelativeFreq1.class);
-    job.setMapperClass(TokenizerMapper.class);
-    job.setCombinerClass(IntSumReducer.class);
-    job.setReducerClass(IntSumReducer.class);
+    job.setMapperClass(RF1Mapper.class);
+    job.setCombinerClass(RF1Reducer.class);
+		job.setReducerClass(RF1Reducer.class);
+		job.setPartitionerClass(RF1Partitioner.class);
     job.setOutputKeyClass(WordPair.class);
     job.setOutputValueClass(IntWritable.class);
     FileInputFormat.addInputPath(job, new Path(otherArgs[0]));
