@@ -3,6 +3,7 @@ import java.util.StringTokenizer;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
@@ -12,63 +13,75 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.GenericOptionsParser;
 
 public class RelativeFreq1 {
-  public static class RF1Mapper extends Mapper<Object, Text, WordPair, IntWritable> {
-    private final static IntWritable one = new IntWritable(1);
+	public static class PairsOccurrenceMapper extends Mapper<LongWritable, Text, WordPair, IntWritable> {
+		private WordPair wordPair = new WordPair();
+		private IntWritable ONE = new IntWritable(1);
 
-    public void map(Object key, Text value, Context context) throws IOException, InterruptedException {
-      StringTokenizer itr = new StringTokenizer(value.toString());
-      Text current = null;
-      Text star = new Text("*");
-      if(itr.hasMoreTokens()) {
-        current = new Text(itr.nextToken());
-      }
-      while (itr.hasMoreTokens()) {
-        context.write(new WordPair(current, star), one);
-        Text next = new Text(itr.nextToken());
-        context.write(new WordPair(current, next), one);
-        context.write(new WordPair(next, current), one);
-        context.write(new WordPair(next, star), one);
-        current = next;
-      }
-    }
-  }
-
-  public static class RF1Reducer extends Reducer<WordPair, IntWritable, WordPair, IntWritable> {
-    public void reduce(WordPair key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
-			int sum = 0;
-			for(IntWritable value : values) {
-				sum = sum + value.get();
-			}
-			context.write(key, new IntWritable(sum));
-    }
-	}
-	
-	public static class RF1Partitioner extends Partitioner<WordPair, IntWritable> {
 		@Override
-		public int getPartition(WordPair key, IntWritable value, int numReduceTasks) {
-			// System.out.println("key: " + key.getKey() + ", " + key.getValue() + " val:" +
-			// value);
-			return 
+		protected void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
+			int neighbors = context.getConfiguration().getInt("neighbors", 2);
+			String[] tokens = value.toString().split("\\s+");
+			if (tokens.length > 1) {
+				for (int i = 0; i < tokens.length; i++) {
+					wordPair.setWord(tokens[i]);
+					int count = 0;
+					int start = (i - neighbors < 0) ? 0 : i - neighbors;
+					int end = (i + neighbors > tokens.length - 1) ? tokens.length - 1 : i + neighbors;
+					for (int j = start; j <= end; j++) {
+						if (j == i) continue;
+							wordPair.setNeighbor(tokens[j]);
+							context.write(new WordPair(wordPair.getWord(), new Text("*")), ONE);
+							count++;
+					}
+					context.write(new WordPair(tokens[i], "*"), new IntWritable(count));
+				}
+			}
 		}
 	}
 
-  public static void main(String[] args) throws Exception {
-    Configuration conf = new Configuration();
-    String[] otherArgs = new GenericOptionsParser(conf, args).getRemainingArgs();
-    if (otherArgs.length != 2) {
-      System.err.println("Usage: WordSort <in> <out>");
-      System.exit(2);
-    }
-    Job job = new Job(conf, "word count");
-    job.setJarByClass(RelativeFreq1.class);
-    job.setMapperClass(RF1Mapper.class);
-    job.setCombinerClass(RF1Reducer.class);
-		job.setReducerClass(RF1Reducer.class);
-		job.setPartitionerClass(RF1Partitioner.class);
-    job.setOutputKeyClass(WordPair.class);
-    job.setOutputValueClass(IntWritable.class);
-    FileInputFormat.addInputPath(job, new Path(otherArgs[0]));
-    FileOutputFormat.setOutputPath(job, new Path(otherArgs[1]));
-    System.exit(job.waitForCompletion(true) ? 0 : 1);
-  }
+	private static class RFCombiner extends Reducer<WordPair, IntWritable, WordPair, IntWritable> {
+		public void reduce(WordPair key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
+				int count = 0;
+				for (IntWritable value : values) {
+						count += Integer.parseInt(value.toString());
+				}
+				context.write(key, new IntWritable(count));
+		}
+}
+
+	public static class PairsReducer extends Reducer<WordPair, IntWritable, WordPair, IntWritable> {
+		private IntWritable totalCount = new IntWritable();
+
+		@Override
+		protected void reduce(WordPair key, Iterable<IntWritable> values, Context context)
+				throws IOException, InterruptedException {
+			int count = 0;
+			for (IntWritable value : values) {
+				count += value.get();
+			}
+			totalCount.set(count);
+			context.write(key, totalCount);
+		}
+	}
+
+	public static void main(String[] args) throws Exception {
+		Configuration conf = new Configuration();
+		String[] otherArgs = new GenericOptionsParser(conf, args).getRemainingArgs();
+		if (otherArgs.length != 2) {
+			System.err.println("Usage: wordcount <in> <out>");
+			System.exit(2);
+		}
+		Job job = new Job(conf, "word occurence");
+		job.setJarByClass(RelativeFreq1.class);
+		
+		job.setMapperClass(PairsOccurrenceMapper.class);
+		job.setReducerClass(PairsReducer.class);
+		job.setCombinerClass(RFCombiner.class);
+
+		job.setOutputKeyClass(WordPair.class);
+		job.setOutputValueClass(IntWritable.class);
+		FileInputFormat.addInputPath(job, new Path(otherArgs[0]));
+		FileOutputFormat.setOutputPath(job, new Path(otherArgs[1]));
+		System.exit(job.waitForCompletion(true) ? 0 : 1);
+	}
 }
