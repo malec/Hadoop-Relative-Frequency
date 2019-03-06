@@ -1,4 +1,5 @@
 import java.io.IOException;
+import java.util.StringTokenizer;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Text;
@@ -17,21 +18,19 @@ public class RelativeFreq1 {
 		private static final IntWritable one = new IntWritable(1);
 
 		public void map(Object key, Text value, Context context) throws IOException, InterruptedException {
-			String[] words = value.toString().split(" ");
+			StringTokenizer itr = new StringTokenizer(value.toString());
+			Text current = null;
+			if (itr.hasMoreTokens()) {
+				current = new Text(itr.nextToken());
+			}
+			while (itr.hasMoreTokens()) {
+				Text next = new Text(itr.nextToken());
+				context.write(new Text(current + "," + next), one);
+				context.write(new Text(next + "," + current), one);
 
-			for (String word : words) {
-				if (word.matches("^\\w+$")) {
-					int count = 0;
-					for (String term : words) {
-						if (term.matches("^\\w+$") && !term.equals(word)) {
-							context.write(new Text(word + "," + term), one);
-							count++;
-						}
-					}
-					context.write(new Text(word + ",*"), new IntWritable(count));
-				} else {
-					System.out.println("word is: \"" + word + "\"");
-				}
+				context.write(new Text(current + ",*"), one);
+				context.write(new Text(next + ",*"), one);
+				current = next;
 			}
 		}
 	}
