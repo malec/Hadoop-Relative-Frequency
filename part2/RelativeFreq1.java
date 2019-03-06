@@ -6,7 +6,6 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
-import org.apache.hadoop.mapreduce.Partitioner;
 import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
@@ -31,14 +30,6 @@ public class RelativeFreq1 {
 				context.write(new WordPair(next, star), one);
 				current = next;
 			}
-		}
-	}
-
-	public static class RFPartitioner extends Partitioner<WordPair, IntWritable> {
-		@Override
-		public int getPartition(WordPair key, IntWritable value, int numReduceTasks) {
-			int hash = Math.abs(key.getWord().hashCode()) % numReduceTasks;
-			return hash;
 		}
 	}
 
@@ -82,7 +73,6 @@ public class RelativeFreq1 {
 		job.setOutputValueClass(Text.class);
 
 		job.setMapperClass(Map.class);
-		job.setPartitionerClass(RFPartitioner.class);
 		job.setCombinerClass(Combine.class);
 		job.setReducerClass(Reduce.class);
 

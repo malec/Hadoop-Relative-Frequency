@@ -80,7 +80,6 @@ public class WordPair implements Writable, WritableComparable<WordPair> {
     @Override
     public int hashCode() {
         int result = (word != null) ? word.hashCode() : 0;
-        result = 163 * result + ((neighbor != null) ? neighbor.hashCode() : 0);
         return result;
     }
 
