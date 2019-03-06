@@ -39,10 +39,6 @@ public class RelativeFreq1 {
 		public int getPartition(WordPair key, IntWritable value, int numReduceTasks) {
 			int hash = Math.abs(key.getWord().hashCode()) % numReduceTasks;
 			return hash;
-			// char[] alphabet = { 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's',
-			// 		't', 'u', 'v', 'w', 'x', 'y', 'z' };
-			// return (java.util.Arrays.binarySearch(alphabet, Character.toLowerCase(key.toString().split(",")[0].charAt(0)))
-			// 		* numReduceTasks / alphabet.length) % numReduceTasks;
 		}
 	}
 
@@ -63,17 +59,13 @@ public class RelativeFreq1 {
 				throws IOException, InterruptedException {
 			int count = 0;
 
-			System.out.println("key: " + key.getWord() + ", " + key.getNeighbor());
 			for (IntWritable value : values) {
 				count += value.get();
-				System.out.println("value: " + value.get());
 			}
 
 			if (key.getNeighbor().toString().contains("*")) {
 				totalCount = count;
-				System.out.println("got a total count of " + count);
 			} else {
-				System.out.println(count + " " + totalCount);
 				context.write(key, new Text(String.valueOf(count / totalCount)));
 			}
 		}
