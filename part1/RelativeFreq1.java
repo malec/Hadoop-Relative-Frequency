@@ -9,13 +9,12 @@ import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Partitioner;
 import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
-import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
-import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 
 public class RelativeFreq1 {
-	public static class Map extends Mapper<Object, Text, Text, IntWritable> {
+	public static class Map extends Mapper<Object, Text, WordPair, IntWritable> {
 		private static final IntWritable one = new IntWritable(1);
+		private static final Text star = new Text("*");
 
 		public void map(Object key, Text value, Context context) throws IOException, InterruptedException {
 			StringTokenizer itr = new StringTokenizer(value.toString());
@@ -25,11 +24,11 @@ public class RelativeFreq1 {
 			}
 			while (itr.hasMoreTokens()) {
 				Text next = new Text(itr.nextToken());
-				context.write(new Text(current + "," + next), one);
-				context.write(new Text(next + "," + current), one);
+				context.write(new WordPair(current, next), one);
+				context.write(new WordPair(next, current), one);
 
-				context.write(new Text(current + ",*"), one);
-				context.write(new Text(next + ",*"), one);
+				context.write(new WordPair(current, star), one);
+				context.write(new WordPair(next, star), one);
 				current = next;
 			}
 		}
