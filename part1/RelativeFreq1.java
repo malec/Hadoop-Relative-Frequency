@@ -67,7 +67,7 @@ public class RelativeFreq1 {
 				count += value.get();
 			}
 
-			if (keyStr.matches(".*\\*")) {
+			if (keyStr.contains("*")) {
 				totalCount = count;
 			} else {
 				String[] pair = keyStr.split(",");
