@@ -7,11 +7,9 @@ import java.io.DataOutput;
 import java.io.IOException;
 
 /**
- * User: Bill Bejeck
- * Date: 11/24/12
- * Time: 12:55 AM
+ * User: Bill Bejeck Date: 11/24/12 Time: 12:55 AM
  */
-public class WordPair implements Writable,WritableComparable<WordPair> {
+public class WordPair implements Writable, WritableComparable<WordPair> {
 
     private Text word;
     private Text neighbor;
@@ -22,7 +20,7 @@ public class WordPair implements Writable,WritableComparable<WordPair> {
     }
 
     public WordPair(String word, String neighbor) {
-        this(new Text(word),new Text(neighbor));
+        this(new Text(word), new Text(neighbor));
     }
 
     public WordPair() {
@@ -31,15 +29,10 @@ public class WordPair implements Writable,WritableComparable<WordPair> {
     }
 
     @Override
-    public int compareTo(WordPair other) {                         // A compareTo B
-        int returnVal = this.word.compareTo(other.getWord());      // return -1: A < B
-        if(returnVal != 0){                                        // return 0: A = B
-            return returnVal;                                      // return 1: A > B
-        }
-        if(this.neighbor.toString().equals("*")){
-            return -1;
-        }else if(other.getNeighbor().toString().equals("*")){
-            return 1;
+    public int compareTo(WordPair other) { // A compareTo B
+        int returnVal = this.word.compareTo(other.getWord()); // return -1: A < B
+        if (returnVal != 0) { // return 0: A = B
+            return returnVal; // return 1: A > B
         }
         return this.neighbor.compareTo(other.getNeighbor());
     }
@@ -64,19 +57,22 @@ public class WordPair implements Writable,WritableComparable<WordPair> {
 
     @Override
     public String toString() {
-        return "{word=["+word+"]"+
-               " neighbor=["+neighbor+"]}";
+        return word + "," + neighbor;
     }
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
 
         WordPair wordPair = (WordPair) o;
 
-        if (neighbor != null ? !neighbor.equals(wordPair.neighbor) : wordPair.neighbor != null) return false;
-        if (word != null ? !word.equals(wordPair.word) : wordPair.word != null) return false;
+        if (neighbor != null ? !neighbor.equals(wordPair.neighbor) : wordPair.neighbor != null)
+            return false;
+        if (word != null ? !word.equals(wordPair.word) : wordPair.word != null)
+            return false;
 
         return true;
     }
@@ -88,10 +84,11 @@ public class WordPair implements Writable,WritableComparable<WordPair> {
         return result;
     }
 
-    public void setWord(String word){
+    public void setWord(String word) {
         this.word.set(word);
     }
-    public void setNeighbor(String neighbor){
+
+    public void setNeighbor(String neighbor) {
         this.neighbor.set(neighbor);
     }
 

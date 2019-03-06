@@ -34,18 +34,20 @@ public class RelativeFreq1 {
 		}
 	}
 
-	public static class RFPartitioner extends Partitioner<Text, IntWritable> {
+	public static class RFPartitioner extends Partitioner<WordPair, IntWritable> {
 		@Override
-		public int getPartition(Text key, IntWritable value, int numReduceTasks) {
-			char[] alphabet = { 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's',
-					't', 'u', 'v', 'w', 'x', 'y', 'z' };
-			return (java.util.Arrays.binarySearch(alphabet, Character.toLowerCase(key.toString().split(",")[0].charAt(0)))
-					* numReduceTasks / alphabet.length) % numReduceTasks;
+		public int getPartition(WordPair key, IntWritable value, int numReduceTasks) {
+			int hash = Math.abs(key.getWord().hashCode()) % numReduceTasks;
+			return hash;
+			// char[] alphabet = { 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's',
+			// 		't', 'u', 'v', 'w', 'x', 'y', 'z' };
+			// return (java.util.Arrays.binarySearch(alphabet, Character.toLowerCase(key.toString().split(",")[0].charAt(0)))
+			// 		* numReduceTasks / alphabet.length) % numReduceTasks;
 		}
 	}
 
-	private static class Combine extends Reducer<Text, IntWritable, Text, IntWritable> {
-		public void reduce(Text key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
+	private static class Combine extends Reducer<WordPair, IntWritable, WordPair, IntWritable> {
+		public void reduce(WordPair key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
 			int count = 0;
 			for (Text value : values) {
 				count += Integer.parseInt(value.toString());
@@ -54,23 +56,25 @@ public class RelativeFreq1 {
 		}
 	}
 
-	public static class Reduce extends Reducer<Text, IntWritable, Text, Text> {
+	public static class Reduce extends Reducer<WordPair, IntWritable, WordPair, Text> {
+		
 		double totalCount = 0;
-
-		public void reduce(Text key, Iterable<IntWritable> values, Context context)
+		public void reduce(WordPair key, Iterable<IntWritable> values, Context context)
 				throws IOException, InterruptedException {
-			String keyStr = key.toString();
 			int count = 0;
 
+			System.out.println("key: " + key.getWord() + ", " + key.getNeighbor());
 			for (IntWritable value : values) {
 				count += value.get();
+				System.out.println("value: " + value.get());
 			}
 
-			if (keyStr.contains("*")) {
+			if (key.getNeighbor().toString().contains("*")) {
 				totalCount = count;
+				System.out.println("got a total count of " + count);
 			} else {
-				String[] pair = keyStr.split(",");
-				context.write(new Text(pair[0] + ", " + pair[1]), new Text(String.valueOf(count / totalCount)));
+				System.out.println(count + " " + totalCount);
+				context.write(key, new Text(String.valueOf(count / totalCount)));
 			}
 		}
 	}
@@ -80,9 +84,9 @@ public class RelativeFreq1 {
 		job.setJarByClass(RelativeFreq1.class);
 		job.setNumReduceTasks(3);
 
-		job.setMapOutputKeyClass(Text.class);
+		job.setMapOutputKeyClass(WordPair.class);
 		job.setMapOutputValueClass(IntWritable.class);
-		job.setOutputKeyClass(Text.class);
+		job.setOutputKeyClass(WordPair.class);
 		job.setOutputValueClass(Text.class);
 
 		job.setMapperClass(Map.class);
